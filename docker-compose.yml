@@ -1,6 +1,6 @@
 services:
   docker-registry-cache:
-    image: registry:2 # L'image officielle du Docker Registry
+    image: registry:2 # L'image officielle du Docker Registry : https://hub.docker.com/_/registry
     container_name: docker-cache # Un nom facile à identifier pour votre conteneur
     restart: always # Redémarre toujours le conteneur s'il s'arrête
     ports:
