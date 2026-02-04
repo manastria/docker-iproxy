@@ -17,19 +17,25 @@ services:
       # Important : Ajoutez le nom du service lui-même à NO_PROXY
       - NO_PROXY=${SQUID_NO_PROXY},docker-registry-cache
 
-  apt-cache: # Nouveau service pour Apt-Cacher-NG
-    image: sameersbn/apt-cacher-ng:latest # Ou une version spécifique comme 3.7.4-20220421
+  apt-cache:
+    build: ./apt-cacher-ng
     container_name: apt-cache-server
     restart: always
     ports:
       - "3142:3142" # Port par défaut d'Apt-Cacher-NG
     volumes:
-      # Volume pour le cache des paquets APT. Important pour la persistance des données.
       - ./apt-cache:/var/cache/apt-cacher-ng
-      - ./apt-cache-config:/etc/apt-cacher-ng
-    environment:
-      - HTTP_PROXY=${SQUID_PROXY_ADDR}
-      - HTTPS_PROXY=${SQUID_PROXY_ADDR}
-      # Important : Ajoutez le nom du service lui-même à NO_PROXY
-      - NO_PROXY=${SQUID_NO_PROXY},apt-cache
+      - ./apt-logs:/var/log/apt-cacher-ng
+      - ./apt-cacher-ng/conf/acng.conf:/etc/apt-cacher-ng/acng.conf:ro
+      - ./apt-cacher-ng/conf/security.conf:/etc/apt-cacher-ng/security.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:3142/acng-report.html >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+#    environment:
+#      - HTTP_PROXY=${SQUID_PROXY_ADDR}
+#      - HTTPS_PROXY=${SQUID_PROXY_ADDR}
+#      # Important : Ajoutez le nom du service lui-même à NO_PROXY
+#      - NO_PROXY=${SQUID_NO_PROXY},apt-cache
   
