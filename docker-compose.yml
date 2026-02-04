@@ -26,6 +26,7 @@ services:
     volumes:
       # Volume pour le cache des paquets APT. Important pour la persistance des données.
       - ./apt-cache:/var/cache/apt-cacher-ng
+      - ./apt-cache-config:/etc/apt-cacher-ng
     environment:
       - HTTP_PROXY=${SQUID_PROXY_ADDR}
       - HTTPS_PROXY=${SQUID_PROXY_ADDR}
