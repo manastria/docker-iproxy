@@ -1,3 +1,4 @@
 apt-cache/
 !apt-cache/.gitkeep
+apt-logs/
 docker-cache/
