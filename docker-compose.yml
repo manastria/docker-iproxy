@@ -38,4 +38,33 @@ services:
 #      - HTTPS_PROXY=${SQUID_PROXY_ADDR}
 #      # Important : Ajoutez le nom du service lui-même à NO_PROXY
 #      - NO_PROXY=${SQUID_NO_PROXY},apt-cache
-  
+
+  qbittorrent: # Seed initial pour la distribution des VM aux étudiants (complète le LPD, jugé trop lent dans le labo)
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    restart: always
+    environment:
+      - PUID=1000 # Remplacez par l'uid de votre utilisateur (commande : id -u)
+      - PGID=1000 # Remplacez par le gid de votre utilisateur (commande : id -g)
+      - TZ=Europe/Paris
+      - WEBUI_PORT=8080
+      - TORRENTING_PORT=6881 # Port fixe : pas de port aléatoire à retrouver en cas de souci
+    ports:
+      - "8080:8080" # WebUI : ajout manuel du .torrent, ou pilotage via l'API depuis un script
+      - "6881:6881" # Port BT, TCP
+      - "6881:6881/udp" # Port BT, UDP
+    volumes:
+      - ./qbittorrent/config:/config # Configuration persistante (identifiants WebUI, réglages)
+      # Chemin vers les images de VM déjà présentes sur le disque : le .torrent créé pointe
+      # vers ce même contenu, qBittorrent vérifie le hash et passe directement en seed
+      # (pas de téléchargement, pas besoin de dossier "watch")
+      - /chemin/vers/vos/images-vm:/data:ro
+
+  opentracker: # Tracker BitTorrent minimal, en complément du LPD
+    image: wiltonsr/opentracker:open # image communautaire — cf. docs/opentracker-provenance.md
+    container_name: opentracker
+    restart: always
+    ports:
+      - "6969:6969/tcp"
+      - "6969:6969/udp"
+    # Diagnostic sans authentification : http://<ip-machine-prof>:6969/stats

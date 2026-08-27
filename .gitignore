@@ -2,3 +2,5 @@ apt-cache/
 !apt-cache/.gitkeep
 apt-logs/
 docker-cache/
+qbittorrent/
+!qbittorrent/.gitkeep
