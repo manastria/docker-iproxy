@@ -32,16 +32,26 @@ ne recrée que les services modifiés).
 
 Quatre services indépendants définis dans `docker-compose.yml`, qui récupèrent
 tous le contenu distant via le proxy Squid amont du labo (`SQUID_PROXY_ADDR` /
-`SQUID_NO_PROXY` dans `.env`) :
+`SQUID_NO_PROXY` dans `.env`, ou en dur dans sa propre config pour apt-cache —
+voir plus bas) :
 
 - **docker-registry-cache** (`registry:2`) — cache/miroir pull-through pour
   Docker Hub. Configuré via `config.yml`, monté en lecture seule dans le
   conteneur ; son `proxy.remoteurl` pointe vers `https://registry-1.docker.io`.
   Les couches d'images mises en cache persistent dans `./docker-cache` (bind
   mount, ignoré par git). Écoute sur le port `5000`.
-- **apt-cache** (`sameersbn/apt-cacher-ng`) — proxy de cache pour les
-  téléchargements de paquets APT Debian/Ubuntu. Persiste dans `./apt-cache`
-  (bind mount, ignoré par git). Écoute sur le port `3142`.
+- **apt-cache** — proxy de cache pour les téléchargements de paquets APT
+  Debian/Ubuntu. Build maison (`build: ./apt-cacher-ng`, Dockerfile sur
+  `debian:trixie-slim`) plutôt qu'une image publique — remplace l'image
+  `sameersbn/apt-cacher-ng` utilisée initialement. Configuré via
+  `apt-cacher-ng/conf/acng.conf`/`security.conf` (montés en lecture seule) ;
+  le proxy amont y est renseigné en dur (`Proxy: http://172.16.0.1:3128`)
+  plutôt que via `HTTP_PROXY`/`HTTPS_PROXY` — un fichier de conf monté dans le
+  conteneur n'a pas accès aux variables du `.env`, d'où le bloc `environment`
+  laissé en commentaire dans `docker-compose.yml`. Persiste dans `./apt-cache`
+  et journalise dans `./apt-logs` (bind mounts, ignorés par git). Healthcheck
+  sur `acng-report.html`. Écoute sur le port `3142`. En cas d'erreur `BADSIG`
+  sur les `InRelease` (cache corrompu/périmé), voir `docs/error-badsig.md`.
 - **qbittorrent** (`linuxserver/qbittorrent`) — diffuse les images de VM vers
   les machines des étudiants via BitTorrent, en alternative à LPD (jugé trop
   lent dans ce labo). WebUI sur le port `8080` ; port BT fixe `6881` (tcp+udp)
@@ -60,11 +70,13 @@ tous le contenu distant via le proxy Squid amont du labo (`SQUID_PROXY_ADDR` /
   fois (27/08/2026), cassant un `docker compose pull` sans rien changer côté
   labo.
 
-Les deux services de cache ont `HTTP_PROXY`/`HTTPS_PROXY` positionnés vers le
-proxy Squid amont, et `NO_PROXY` positionné pour qu'ils ne se proxyfient pas
-mutuellement (ni vers localhost) — lors de l'ajout d'un nouveau service
-proxyfié, suivre le même schéma et ajouter le nom du service lui-même à son
-`NO_PROXY`.
+**docker-registry-cache** a `HTTP_PROXY`/`HTTPS_PROXY` positionnés vers le
+proxy Squid amont, et `NO_PROXY` positionné pour qu'il ne se proxyfie pas
+lui-même (ni localhost) — lors de l'ajout d'un nouveau service proxyfié via
+variables d'environnement, suivre le même schéma et ajouter le nom du service
+lui-même à son `NO_PROXY`. **apt-cache** ne suit plus ce schéma depuis son
+passage en build maison : son proxy amont est configuré directement dans
+`acng.conf` (voir ci-dessus), pas via l'environnement.
 
 Les valeurs d'environnement (`SQUID_PROXY_ADDR`, `SQUID_NO_PROXY`) sont dans
 `.env` et spécifiques au site (actuellement `172.16.0.1:3128`) ; ne pas
