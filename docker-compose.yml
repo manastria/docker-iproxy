@@ -63,6 +63,18 @@ services:
       # lus par le script d'ajout (add_torrent.py), et servis aux étudiants par votre serveur HTTP existant
       - ./torrents:/torrents
 
+  torrents-http: # Serveur statique léger : publie les .torrent + webseed HTTP de secours (cf. nginx/default.conf)
+    image: nginx:alpine
+    container_name: torrents-http
+    restart: always
+    ports:
+      - "${TORRENTS_HTTP_PORT:-8081}:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./torrents:/usr/share/nginx/html/torrents:ro
+      # Même contenu que le volume /data de qbittorrent, en lecture seule ici aussi
+      - /chemin/vers/vos/images-vm:/usr/share/nginx/html/images-vm:ro
+
   opentracker: # Tracker BitTorrent minimal, en complément du LPD
     image: wiltonsr/opentracker:open # image communautaire — cf. docs/opentracker-provenance.md
     container_name: opentracker

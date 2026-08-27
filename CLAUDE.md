@@ -30,7 +30,7 @@ ne recrée que les services modifiés).
 
 ## Architecture
 
-Quatre services indépendants définis dans `docker-compose.yml`, qui récupèrent
+Cinq services indépendants définis dans `docker-compose.yml`, qui récupèrent
 tous le contenu distant via le proxy Squid amont du labo (`SQUID_PROXY_ADDR` /
 `SQUID_NO_PROXY` dans `.env`, ou en dur dans sa propre config pour apt-cache —
 voir plus bas) :
@@ -66,8 +66,17 @@ voir plus bas) :
   torrent de qBittorrent ou un autre outil), ajoutés en seed via
   `add_torrent.py` (script à la racine du dépôt, utilise l'API WebUI —
   nécessite qu'un mot de passe WebUI **fixe** soit défini au préalable, sinon
-  échec d'authentification), puis servis aux étudiants par le serveur HTTP
-  existant de l'établissement (hors périmètre de ce dépôt).
+  échec d'authentification), puis publiés par **torrents-http** (voir
+  ci-dessous).
+- **torrents-http** (`nginx:alpine`) — serveur statique minimal, sans
+  authentification, réservé au réseau du labo. Config dans
+  `nginx/default.conf`. Deux routes en lecture seule : `/torrents/` (les
+  fichiers `.torrent` à récupérer par les machines étudiantes) et
+  `/images-vm/` (le même contenu que `/data` sur qbittorrent — sert de
+  *webseed* HTTP, BEP 19, en secours si le BitTorrent ne fonctionne pas ; à
+  déclarer comme `url-list` dans le `.torrent` au moment de sa création).
+  Port hôte configurable via `TORRENTS_HTTP_PORT` dans `.env` (défaut `8081`,
+  volontairement pas `80`).
 - **opentracker** — tracker BitTorrent minimal complétant LPD, sans
   authentification. Diagnostics sur `http://<host>:6969/stats`. Ports `6969`
   tcp+udp. Image communautaire non officielle (`wiltonsr/opentracker`) — voir
