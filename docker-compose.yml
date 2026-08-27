@@ -59,6 +59,9 @@ services:
       # vers ce même contenu, qBittorrent vérifie le hash et passe directement en seed
       # (pas de téléchargement, pas besoin de dossier "watch")
       - /chemin/vers/vos/images-vm:/data:ro
+      # Stockage des .torrent : créés ici (Créateur de torrent de qBittorrent, ou tout autre outil),
+      # lus par le script d'ajout (add_torrent.py), et servis aux étudiants par votre serveur HTTP existant
+      - ./torrents:/torrents
 
   opentracker: # Tracker BitTorrent minimal, en complément du LPD
     image: wiltonsr/opentracker:open # image communautaire — cf. docs/opentracker-provenance.md

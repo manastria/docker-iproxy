@@ -1,6 +1,10 @@
-apt-cache/
+apt-cache/*
 !apt-cache/.gitkeep
-apt-logs/
-docker-cache/
-qbittorrent/
+apt-logs/*
+!apt-logs/.gitkeep
+docker-cache/*
+!docker-cache/.gitkeep
+qbittorrent/*
 !qbittorrent/.gitkeep
+torrents/*
+!torrents/.gitkeep

@@ -61,7 +61,13 @@ voir plus bas) :
   (`/chemin/vers/vos/images-vm:ro` — chemin d'exemple, à adapter par machine
   hôte) afin de pouvoir diffuser sans étape séparée de téléchargement/
   surveillance ; les fichiers `.torrent` générés à partir de ce contenu
-  correspondent directement par hachage.
+  correspondent directement par hachage. Les `.torrent` eux-mêmes sont stockés
+  dans `./torrents` (bind mount, ignoré par git) : créés là (Créateur de
+  torrent de qBittorrent ou un autre outil), ajoutés en seed via
+  `add_torrent.py` (script à la racine du dépôt, utilise l'API WebUI —
+  nécessite qu'un mot de passe WebUI **fixe** soit défini au préalable, sinon
+  échec d'authentification), puis servis aux étudiants par le serveur HTTP
+  existant de l'établissement (hors périmètre de ce dépôt).
 - **opentracker** — tracker BitTorrent minimal complétant LPD, sans
   authentification. Diagnostics sur `http://<host>:6969/stats`. Ports `6969`
   tcp+udp. Image communautaire non officielle (`wiltonsr/opentracker`) — voir
