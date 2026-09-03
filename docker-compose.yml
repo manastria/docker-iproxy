@@ -83,3 +83,13 @@ services:
       - "6969:6969/tcp"
       - "6969:6969/udp"
     # Diagnostic sans authentification : http://<ip-machine-prof>:6969/stats
+
+  git-daemon: # Dépôt Git minimaliste (git://, sans auth ni chiffrement) pour scripts de maintenance
+    build: ./git-daemon
+    container_name: git-daemon
+    restart: always
+    ports:
+      - "9418:9418"
+    volumes:
+      # Dépôts bare persistants, un sous-dossier par dépôt (ex. repos/maintenance.git)
+      - ./git-daemon/repos:/srv/git
