@@ -8,6 +8,8 @@ apt-logs/*
 !apt-logs/.gitkeep
 docker-cache/*
 !docker-cache/.gitkeep
+git-daemon/repos/*
+!git-daemon/repos/.gitkeep
 qbittorrent/*
 !qbittorrent/.gitkeep
 torrents/*

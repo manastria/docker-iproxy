@@ -30,7 +30,7 @@ ne recrée que les services modifiés).
 
 ## Architecture
 
-Cinq services indépendants définis dans `docker-compose.yml`, qui récupèrent
+Six services indépendants définis dans `docker-compose.yml`, qui récupèrent
 tous le contenu distant via le proxy Squid amont du labo (`SQUID_PROXY_ADDR` /
 `SQUID_NO_PROXY` dans `.env`, ou en dur dans sa propre config pour apt-cache —
 voir plus bas) :
@@ -89,6 +89,16 @@ voir plus bas) :
   et la procédure de sauvegarde ; le nom du dépôt Docker Hub a déjà changé une
   fois (27/08/2026), cassant un `docker compose pull` sans rien changer côté
   labo.
+- **git-daemon** (`build: ./git-daemon`, Dockerfile sur `alpine:latest`) —
+  dépôts Git bare accessibles en `git://` (sans authentification ni
+  chiffrement), pour du push/clone de scripts de maintenance depuis les
+  machines du labo. Port `9418`. Dépôts stockés sous `./git-daemon/repos`
+  par défaut (bind mount, ignoré par git), ou sous `GIT_DAEMON_REPOS_PATH`
+  (`.env`, optionnelle) pour les stocker hors de ce dépôt — voir
+  `docs/git-daemon.md`, qui documente aussi un piège de permissions : ce
+  répertoire doit être créé par l'utilisateur hôte *avant* le premier
+  `docker compose up`, sinon Docker le crée en tant que `root` (le conteneur
+  ne tourne pas avec un `PUID`/`PGID` comme qBittorrent).
 
 **docker-registry-cache** a `HTTP_PROXY`/`HTTPS_PROXY` positionnés vers le
 proxy Squid amont, et `NO_PROXY` positionné pour qu'il ne se proxyfie pas

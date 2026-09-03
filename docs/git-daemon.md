@@ -7,9 +7,39 @@ maintenance — pas pour du code sensible.
 
 ---
 
+## Emplacement des dépôts
+
+Par défaut, les dépôts bare sont stockés sous `./git-daemon/repos`, dans ce
+dépôt git (bind mount, ignoré par git). `GIT_DAEMON_REPOS_PATH` (`.env`,
+optionnelle) permet de les stocker ailleurs sur l'hôte — un disque ou point
+de montage séparé, avec un cycle de vie/backup indépendant du clone de ce
+dépôt de configuration.
+
+**Avant le tout premier `docker compose up` du service**, créez vous-même ce
+répertoire (par défaut ou via `GIT_DAEMON_REPOS_PATH`) :
+
+```bash
+mkdir -p ./git-daemon/repos   # ou le chemin de GIT_DAEMON_REPOS_PATH
+```
+
+Le `Dockerfile` du service ne fait tourner `git daemon` que sous `root`
+(pas de `PUID`/`PGID` comme pour qBittorrent) : si ce répertoire n'existe pas
+encore au premier démarrage, Docker le crée automatiquement en tant que
+bind mount, appartenant à `root` — votre utilisateur ne peut alors plus y
+créer de dépôt sans `sudo`. Le créer vous-même au préalable évite le
+problème (le répertoire garde votre propriétaire). Si le problème est déjà
+là (répertoire existant appartenant à `root`), corrigez-le une fois avec :
+
+```bash
+sudo chown -R "$(id -u):$(id -g)" ./git-daemon/repos   # ou GIT_DAEMON_REPOS_PATH
+```
+
+---
+
 ## Créer un nouveau dépôt
 
-Chaque dépôt est un sous-dossier `*.git` sous `./git-daemon/repos` :
+Chaque dépôt est un sous-dossier `*.git` sous ce répertoire (par défaut
+`./git-daemon/repos`, ou `GIT_DAEMON_REPOS_PATH` si renseignée) :
 
 ```bash
 mkdir -p ./git-daemon/repos/maintenance.git

@@ -92,5 +92,7 @@ services:
     ports:
       - "9418:9418"
     volumes:
-      # Dépôts bare persistants, un sous-dossier par dépôt (ex. repos/maintenance.git)
-      - ./git-daemon/repos:/srv/git
+      # Dépôts bare persistants, un sous-dossier par dépôt (ex. repos/maintenance.git).
+      # Emplacement configurable via GIT_DAEMON_REPOS_PATH dans .env (ex. hors du dépôt,
+      # sur un disque/point de montage séparé) ; par défaut, sous ce dépôt.
+      - ${GIT_DAEMON_REPOS_PATH:-./git-daemon/repos}:/srv/git
