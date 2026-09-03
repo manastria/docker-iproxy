@@ -1,3 +1,7 @@
+# Contient des secrets (mot de passe WebUI qBittorrent) : ne jamais versionner.
+# Template versionné : .env.sample
+.env
+
 apt-cache/*
 !apt-cache/.gitkeep
 apt-logs/*
