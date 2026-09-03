@@ -55,10 +55,11 @@ services:
       - "6881:6881/udp" # Port BT, UDP
     volumes:
       - ./qbittorrent/config:/config # Configuration persistante (identifiants WebUI, réglages)
-      # Chemin vers les images de VM déjà présentes sur le disque : le .torrent créé pointe
-      # vers ce même contenu, qBittorrent vérifie le hash et passe directement en seed
-      # (pas de téléchargement, pas besoin de dossier "watch")
-      - /chemin/vers/vos/images-vm:/data:ro
+      # Chemin vers les images de VM déjà présentes sur le disque (IMAGES_VM_PATH dans .env,
+      # spécifique à la machine hôte) : le .torrent créé pointe vers ce même contenu,
+      # qBittorrent vérifie le hash et passe directement en seed (pas de téléchargement,
+      # pas besoin de dossier "watch")
+      - ${IMAGES_VM_PATH:?Renseignez IMAGES_VM_PATH dans .env (cf. .env.sample)}:/data:ro
       # Stockage des .torrent : créés ici (Créateur de torrent de qBittorrent, ou tout autre outil),
       # lus par le script d'ajout (add_torrent.py), et servis aux étudiants par votre serveur HTTP existant
       - ./torrents:/torrents
@@ -72,8 +73,8 @@ services:
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./torrents:/usr/share/nginx/html/torrents:ro
-      # Même contenu que le volume /data de qbittorrent, en lecture seule ici aussi
-      - /chemin/vers/vos/images-vm:/usr/share/nginx/html/images-vm:ro
+      # Même contenu que le volume /data de qbittorrent (IMAGES_VM_PATH dans .env), lecture seule ici aussi
+      - ${IMAGES_VM_PATH:?Renseignez IMAGES_VM_PATH dans .env (cf. .env.sample)}:/usr/share/nginx/html/images-vm:ro
 
   opentracker: # Tracker BitTorrent minimal, en complément du LPD
     image: wiltonsr/opentracker:open # image communautaire — cf. docs/opentracker-provenance.md

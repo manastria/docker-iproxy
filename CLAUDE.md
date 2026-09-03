@@ -57,28 +57,31 @@ voir plus bas) :
   lent dans ce labo). WebUI sur le port `8080` ; port BT fixe `6881` (tcp+udp)
   pour éviter la découverte. Config persistante dans `./qbittorrent/config`
   (bind mount, ignoré par git — contient les identifiants WebUI). Pointe en
-  lecture seule vers un répertoire local d'images de VM
-  (`/chemin/vers/vos/images-vm:ro` — chemin d'exemple, à adapter par machine
-  hôte) afin de pouvoir diffuser sans étape séparée de téléchargement/
-  surveillance ; les fichiers `.torrent` générés à partir de ce contenu
+  lecture seule vers un répertoire local d'images de VM (`IMAGES_VM_PATH`
+  dans `.env`, spécifique à la machine hôte — compose refuse de démarrer si
+  la variable est absente) afin de pouvoir diffuser sans étape séparée de
+  téléchargement/surveillance ; les fichiers `.torrent` générés à partir de ce contenu
   correspondent directement par hachage. Les `.torrent` eux-mêmes sont stockés
   dans `./torrents` (bind mount, ignoré par git) : créés là (Créateur de
-  torrent de qBittorrent ou un autre outil), ajoutés en seed via
-  `add_torrent.py` (script à la racine du dépôt, utilise l'API WebUI —
-  nécessite qu'un mot de passe WebUI **fixe** soit défini au préalable, sinon
-  échec d'authentification ; ce mot de passe se définit dans la WebUI puis se
-  reporte dans `QBITTORRENT_WEBUI_PASSWORD` (`.env`), lu automatiquement par
-  le script — voir `docs/qbittorrent.md`), puis publiés par **torrents-http**
-  (voir ci-dessous).
+  torrent de qBittorrent ou un autre outil) ; leurs trackers et webseeds
+  peuvent être ajoutés/remplacés après coup avec `edit_torrent.py` (script à
+  la racine du dépôt, sans dépendance externe, ne modifie jamais l'info-hash
+  — voir `docs/torrents.md`, qui documente aussi le vocabulaire BitTorrent
+  du projet). Ajoutés en seed via `add_torrent.py` (script à la racine du
+  dépôt, utilise l'API WebUI — nécessite qu'un mot de passe WebUI **fixe**
+  soit défini au préalable, sinon échec d'authentification ; ce mot de passe
+  se définit dans la WebUI puis se reporte dans `QBITTORRENT_WEBUI_PASSWORD`
+  (`.env`), lu automatiquement par le script — voir `docs/qbittorrent.md`),
+  puis publiés par **torrents-http** (voir ci-dessous).
 - **torrents-http** (`nginx:alpine`) — serveur statique minimal, sans
   authentification, réservé au réseau du labo. Config dans
   `nginx/default.conf`. Deux routes en lecture seule : `/torrents/` (les
   fichiers `.torrent` à récupérer par les machines étudiantes) et
-  `/images-vm/` (le même contenu que `/data` sur qbittorrent — sert de
-  *webseed* HTTP, BEP 19, en secours si le BitTorrent ne fonctionne pas ; à
-  déclarer comme `url-list` dans le `.torrent` au moment de sa création).
-  Port hôte configurable via `TORRENTS_HTTP_PORT` dans `.env` (défaut `8081`,
-  volontairement pas `80`).
+  `/images-vm/` (le même contenu que `/data` sur qbittorrent, via le même
+  `IMAGES_VM_PATH` — sert de *webseed* HTTP, BEP 19, en secours si le
+  BitTorrent ne fonctionne pas ; à déclarer comme `url-list` dans le
+  `.torrent`, cf. `edit_torrent.py` ci-dessus). Port hôte configurable via
+  `TORRENTS_HTTP_PORT` dans `.env` (défaut `8081`, volontairement pas `80`).
 - **opentracker** — tracker BitTorrent minimal complétant LPD, sans
   authentification. Diagnostics sur `http://<host>:6969/stats`. Ports `6969`
   tcp+udp. Image communautaire non officielle (`wiltonsr/opentracker`) — voir
