@@ -66,8 +66,10 @@ voir plus bas) :
   torrent de qBittorrent ou un autre outil), ajoutés en seed via
   `add_torrent.py` (script à la racine du dépôt, utilise l'API WebUI —
   nécessite qu'un mot de passe WebUI **fixe** soit défini au préalable, sinon
-  échec d'authentification), puis publiés par **torrents-http** (voir
-  ci-dessous).
+  échec d'authentification ; ce mot de passe se définit dans la WebUI puis se
+  reporte dans `QBITTORRENT_WEBUI_PASSWORD` (`.env`), lu automatiquement par
+  le script — voir `docs/qbittorrent.md`), puis publiés par **torrents-http**
+  (voir ci-dessous).
 - **torrents-http** (`nginx:alpine`) — serveur statique minimal, sans
   authentification, réservé au réseau du labo. Config dans
   `nginx/default.conf`. Deux routes en lecture seule : `/torrents/` (les
@@ -96,6 +98,11 @@ passage en build maison : son proxy amont est configuré directement dans
 Les valeurs d'environnement (`SQUID_PROXY_ADDR`, `SQUID_NO_PROXY`) sont dans
 `.env` et spécifiques au site (actuellement `172.16.0.1:3128`) ; ne pas
 supposer qu'elles sont portables d'un déploiement à l'autre.
+
+`.env` contient un secret (`QBITTORRENT_WEBUI_PASSWORD`) : il est ignoré par
+git. `.env.sample` est son pendant versionné (valeurs d'exemple, à copier en
+`.env` sur une nouvelle installation) — toute variable ajoutée à `.env` doit
+être répercutée dans `.env.sample`.
 
 ### apt-proxy-probe.sh/
 

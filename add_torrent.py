@@ -2,29 +2,53 @@
 """Ajoute un .torrent à qBittorrent (WebUI API) en seed sur les données déjà présentes.
 
 Prérequis : un mot de passe WebUI FIXE doit avoir été défini au moins une fois
-(dans qBittorrent : Outils > Options > WebUI > Authentification). Par défaut,
-l'image Docker génère un mot de passe temporaire DIFFÉRENT à chaque démarrage
-du conteneur (visible via `docker logs qbittorrent`) tant qu'aucun mot de passe
-fixe n'est enregistré. Avec le mot de passe temporaire, ce script échoue à
-l'authentification — sans lien avec le script lui-même.
+(dans qBittorrent : Outils > Options > WebUI > Authentification), puis reporté
+dans QBITTORRENT_WEBUI_PASSWORD du fichier .env (cf. docs/qbittorrent.md). Par
+défaut, l'image Docker génère un mot de passe temporaire DIFFÉRENT à chaque
+démarrage du conteneur (visible via `docker logs qbittorrent`) tant qu'aucun
+mot de passe fixe n'est enregistré. Avec le mot de passe temporaire, ce script
+échoue à l'authentification — sans lien avec le script lui-même.
 
 Usage : python3 add_torrent.py chemin/vers/fichier.torrent
 """
+import os
 import sys
+from pathlib import Path
+
 import requests
 
 QBIT_URL = "http://localhost:8080"  # à adapter si le script ne tourne pas sur la machine prof
 USERNAME = "admin"
-PASSWORD = "à-remplacer-par-le-mot-de-passe-fixe-défini-dans-la-WebUI"
 SAVE_PATH = "/data"  # chemin vu par le conteneur, correspond au volume .../images-vm:/data
 
 
+def load_dotenv(path: Path = Path(__file__).parent / ".env") -> None:
+    """Charge les variables de .env dans l'environnement (sans écraser l'existant)."""
+    if not path.exists():
+        return
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip())
+
+
 def main(torrent_path: str) -> None:
+    load_dotenv()
+    password = os.environ.get("QBITTORRENT_WEBUI_PASSWORD")
+    if not password or password == "à-définir":
+        sys.exit(
+            "QBITTORRENT_WEBUI_PASSWORD n'est pas défini dans .env.\n"
+            "Définissez un mot de passe fixe dans la WebUI (Outils > Options > WebUI),\n"
+            "puis reportez-le dans .env (cf. docs/qbittorrent.md)."
+        )
+
     session = requests.Session()
 
     r = session.post(
         f"{QBIT_URL}/api/v2/auth/login",
-        data={"username": USERNAME, "password": PASSWORD},
+        data={"username": USERNAME, "password": password},
     )
     r.raise_for_status()
     if r.text != "Ok.":
