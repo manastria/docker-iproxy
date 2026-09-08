@@ -36,6 +36,28 @@ sudo chown -R "$(id -u):$(id -g)" ./git-daemon/repos   # ou GIT_DAEMON_REPOS_PAT
 
 ---
 
+## Erreur "Impossible de lire le dépôt distant" au clone
+
+Le conteneur fait tourner `git daemon` en `root`, alors que les dépôts sont
+sur un bind mount appartenant à l'utilisateur hôte (cf. section précédente).
+Si les logs (`docker compose logs git-daemon`) montrent :
+
+```
+fatal: detected dubious ownership in repository at '/srv/git/<depot>.git'
+```
+
+c'est la protection anti-CVE-2022-24765 de git qui refuse d'opérer sur un
+dépôt dont le propriétaire diffère de l'utilisateur courant — le client ne
+voit que l'erreur générique "Impossible de lire le dépôt distant". Le
+`Dockerfile` déclare `git config --global --add safe.directory '*'` pour
+lever cette protection (sans risque ici : les dépôts servis sont déjà
+sans authentification ni contrôle d'accès, cf. limites volontaires
+ci-dessous). Si l'erreur réapparaît après une modification du Dockerfile,
+vérifier que cette ligne est toujours présente puis reconstruire l'image
+(`docker compose up -d --build git-daemon`).
+
+---
+
 ## Créer un nouveau dépôt
 
 Chaque dépôt est un sous-dossier `*.git` sous ce répertoire (par défaut
