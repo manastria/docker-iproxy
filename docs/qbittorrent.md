@@ -66,6 +66,23 @@ valeurs d'exemple à remplacer. Toute nouvelle variable ajoutée à `.env` doit
 être répercutée dans `.env.sample` (sans sa valeur réelle) pour rester le
 reflet fidèle de ce qu'un déploiement attend.
 
+## Contrat de l'API de login : versions récentes vs historiques
+
+La documentation officielle de l'API WebUI décrit `/api/v2/auth/login` comme
+répondant toujours HTTP 200, avec un corps `Ok.` ou `Fails.` selon le
+résultat. Ce n'est plus vrai à partir de qBittorrent 5.x (observé en 5.2.3,
+image `linuxserver/qbittorrent`) : la connexion répond par un code HTTP
+standard, `204 No Content` (corps vide) sur succès et `401 Unauthorized` sur
+échec.
+
+`torrent_lib.qbit_login()` (utilisé par `import_seed.py` et `add_torrent.py`)
+accepte les deux contrats. Sans ça, un login qui a **réussi** (204, corps
+vide) serait pris pour un échec — symptôme observé : le script affiche
+`Authentification refusée par qBittorrent ('')`, avec des identifiants pourtant
+corrects. Si ce message revient avec un `''` (et non `HTTP 401, 'Unauthorized'`
+ou similaire), c'est ce contrat qui a probablement encore changé de forme
+dans une version plus récente de qBittorrent.
+
 ## Réinitialiser le mot de passe (mot de passe fixe perdu)
 
 Si le mot de passe fixe est perdu, le seul moyen de revenir à un mot de passe

@@ -58,8 +58,12 @@ services:
       # Chemin vers les images de VM déjà présentes sur le disque (IMAGES_VM_PATH dans .env,
       # spécifique à la machine hôte) : le .torrent créé pointe vers ce même contenu,
       # qBittorrent vérifie le hash et passe directement en seed (pas de téléchargement,
-      # pas besoin de dossier "watch")
-      - ${IMAGES_VM_PATH:?Renseignez IMAGES_VM_PATH dans .env (cf. .env.sample)}:/data:ro
+      # pas besoin de dossier "watch"). PAS en lecture seule (:ro) : même pour un torrent
+      # 100% complet et jamais destiné à être modifié, le moteur libtorrent ouvre les
+      # fichiers en lecture-écriture (préallocation, éventuelles pièces à corriger) —
+      # en lecture seule, l'ouverture échoue ("Read-only file system") et le torrent
+      # reste bloqué en état "error" malgré une vérification des pièces réussie à 100%.
+      - ${IMAGES_VM_PATH:?Renseignez IMAGES_VM_PATH dans .env (cf. .env.sample)}:/data
       # Stockage des .torrent : créés ici (Créateur de torrent de qBittorrent, ou tout autre outil),
       # lus par le script d'ajout (add_torrent.py), et servis aux étudiants par votre serveur HTTP existant
       - ./torrents:/torrents

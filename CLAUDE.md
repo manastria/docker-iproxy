@@ -56,23 +56,37 @@ voir plus bas) :
   les machines des étudiants via BitTorrent, en alternative à LPD (jugé trop
   lent dans ce labo). WebUI sur le port `8080` ; port BT fixe `6881` (tcp+udp)
   pour éviter la découverte. Config persistante dans `./qbittorrent/config`
-  (bind mount, ignoré par git — contient les identifiants WebUI). Pointe en
-  lecture seule vers un répertoire local d'images de VM (`IMAGES_VM_PATH`
-  dans `.env`, spécifique à la machine hôte — compose refuse de démarrer si
-  la variable est absente) afin de pouvoir diffuser sans étape séparée de
-  téléchargement/surveillance ; les fichiers `.torrent` générés à partir de ce contenu
-  correspondent directement par hachage. Les `.torrent` eux-mêmes sont stockés
-  dans `./torrents` (bind mount, ignoré par git) : créés là (Créateur de
-  torrent de qBittorrent ou un autre outil) ; leurs trackers et webseeds
-  peuvent être ajoutés/remplacés après coup avec `edit_torrent.py` (script à
-  la racine du dépôt, sans dépendance externe, ne modifie jamais l'info-hash
-  — voir `docs/torrents.md`, qui documente aussi le vocabulaire BitTorrent
-  du projet). Ajoutés en seed via `add_torrent.py` (script à la racine du
-  dépôt, utilise l'API WebUI — nécessite qu'un mot de passe WebUI **fixe**
-  soit défini au préalable, sinon échec d'authentification ; ce mot de passe
-  se définit dans la WebUI puis se reporte dans `QBITTORRENT_WEBUI_PASSWORD`
-  (`.env`), lu automatiquement par le script — voir `docs/qbittorrent.md`),
-  puis publiés par **torrents-http** (voir ci-dessous).
+  (bind mount, ignoré par git — contient les identifiants WebUI). Pointe vers
+  un répertoire local d'images de VM (`IMAGES_VM_PATH` dans `.env`,
+  spécifique à la machine hôte — compose refuse de démarrer si la variable
+  est absente) afin de pouvoir diffuser sans étape séparée de
+  téléchargement/surveillance ; les fichiers `.torrent` générés à partir de ce
+  contenu correspondent directement par hachage. **Pas en lecture seule** :
+  même pour un torrent complet et jamais modifié, libtorrent ouvre les
+  fichiers en lecture-écriture (préallocation, pièces à corriger
+  éventuellement) — en `:ro`, l'ouverture échoue et le torrent reste bloqué
+  en état `error` malgré une vérification des pièces à 100 % (piège constaté
+  en pratique, détaillé dans `docs/torrents.md`). `torrents-http`, lui, reste
+  en lecture seule sur ce même contenu : il ne fait que le servir en HTTP.
+  Les `.torrent` eux-mêmes sont stockés
+  dans `./torrents` (bind mount, ignoré par git), d'où **torrents-http** les
+  publie (voir ci-dessous). La chaîne de préparation et d'import est décrite
+  dans `docs/torrents.md`, qui documente aussi ses invariants et le
+  vocabulaire BitTorrent du projet. Elle tient en deux temps :
+  `make_torrent.py` prépare hors du labo (manifeste SHA-256 puis `.torrent`
+  « nu », sans tracker ni webseed), `import_seed.py` importe sur la machine
+  du labo (copie, revérification après copie, apposition des trackers et de
+  la webseed d'après `LAB_HOST_IP`, publication, mise en seed). Ce découpage
+  tient au fait que l'info-hash ne dépend que du dictionnaire `info`, donc du
+  contenu : trackers et webseeds s'ajoutent après coup sans casser le swarm,
+  et l'IP du labo n'est écrite que dans `.env`. `edit_torrent.py` couvre les
+  corrections ultérieures, `add_torrent.py` la seule mise en seed ; le
+  bencode et les briques communes sont dans `torrent_lib.py`. Tous ces
+  scripts sont à la racine du dépôt et sans dépendance externe, sauf pour
+  dialoguer avec l'API WebUI (`requests`, importé à l'appel) — ce qui
+  nécessite qu'un mot de passe WebUI **fixe** soit défini au préalable, sinon
+  échec d'authentification : il se définit dans la WebUI puis se reporte dans
+  `QBITTORRENT_WEBUI_PASSWORD` (`.env`) — voir `docs/qbittorrent.md`.
 - **torrents-http** (`nginx:alpine`) — serveur statique minimal, sans
   authentification, réservé au réseau du labo. Config dans
   `nginx/default.conf`. Deux routes en lecture seule : `/torrents/` (les
@@ -110,7 +124,11 @@ passage en build maison : son proxy amont est configuré directement dans
 
 Les valeurs d'environnement (`SQUID_PROXY_ADDR`, `SQUID_NO_PROXY`) sont dans
 `.env` et spécifiques au site (actuellement `172.16.0.1:3128`) ; ne pas
-supposer qu'elles sont portables d'un déploiement à l'autre.
+supposer qu'elles sont portables d'un déploiement à l'autre. Même remarque
+pour `LAB_HOST_IP` (actuellement `172.25.1.111`) : c'est l'adresse de la
+machine du labo telle que les postes étudiants la joignent, et la source
+unique des URL de tracker et de webseed inscrites dans les `.torrent` — elle
+n'est lue que par les scripts de torrents, jamais par `docker-compose.yml`.
 
 `.env` contient un secret (`QBITTORRENT_WEBUI_PASSWORD`) : il est ignoré par
 git. `.env.sample` est son pendant versionné (valeurs d'exemple, à copier en
@@ -130,6 +148,24 @@ sur une machine, nécessite root). Ceci est destiné à être déployé sur les
 machines clientes pour qu'elles puissent découvrir `apt-cache`/
 `docker-registry-cache` même en changeant de réseau — ce n'est pas exécuté
 dans le cadre de la pile compose elle-même.
+
+### Clé de préparation des images de VM
+
+La préparation des images se fait hors du labo (typiquement à la maison), sur
+une clé USB, et l'outillage qui y tourne est **déployé depuis ce dépôt** par
+`provision_usb.py` : `make_torrent.py` + `torrent_lib.py` + un lanceur
+`build.bat` et un `LISEZMOI.txt`. La clé ne contient donc aucune copie de
+référence à maintenir séparément, et aucune adresse du labo — voir
+`docs/torrents.md`. Ne rien y modifier directement : modifier le script dans
+le dépôt, puis redéployer.
+
+Cet outillage remplace un projet séparé et non versionné (« prof-seed »), qui
+dépendait de `py3createtorrent` (via pip) et embarquait un binaire
+`rhash.exe`. Les deux ont disparu : le hachage SHA-256 et la création du
+`.torrent` sont faits en Python pur dans `torrent_lib.py`, de sorte que la clé
+ne demande rien d'autre que Python 3.7+. La création reproduit l'info-hash de
+`py3createtorrent` à l'identique (vérifié sur une image de 4,67 Gio), donc les
+`.torrent` produits par l'ancien outillage restent valables.
 
 ## Machine de dev vs machine du labo
 

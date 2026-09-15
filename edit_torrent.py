@@ -2,84 +2,31 @@
 """Modifie les trackers et les webseeds (BEP 19) d'un fichier .torrent existant.
 
 Ne touche jamais au dictionnaire `info` : l'info-hash du torrent reste
-identique après édition (vérifié par une assertion à l'écriture), donc le
-swarm BitTorrent n'est pas affecté par ce script, seuls les métadonnées
-d'annonce/de secours le sont.
+identique après édition (vérifié à l'écriture), donc le swarm BitTorrent n'est
+pas affecté par ce script — seules les métadonnées d'annonce et de secours le
+sont.
 
-Implémentation bencode maison (lecture/écriture), sans dépendance externe —
-même logique que le petit parseur .env de add_torrent.py.
+Outil d'appoint : dans le flux normal, c'est import_seed.py qui appose
+trackers et webseed au moment de l'import. Ce script sert aux corrections
+après coup (tracker déplacé, port changé, webseed oubliée) et à l'inspection
+d'un .torrent avec --show.
+
+Le bencode vient de torrent_lib.py (implémentation maison, sans dépendance).
 
 Usage :
   python3 edit_torrent.py fichier.torrent --show
+  python3 edit_torrent.py fichier.torrent --lab --in-place
   python3 edit_torrent.py fichier.torrent --add-tracker udp://tracker:6969/announce
   python3 edit_torrent.py fichier.torrent --set-webseeds http://host:8081/images-vm/ --in-place
 """
 import argparse
-import hashlib
 import sys
 from pathlib import Path
 
-
-# --- bencode : décodage ---------------------------------------------------
-
-def bdecode(data: bytes):
-    def decode_bytes(index):
-        colon = data.index(b":", index)
-        length = int(data[index:colon])
-        start = colon + 1
-        return data[start:start + length], start + length
-
-    def decode(index):
-        marker = data[index:index + 1]
-        if marker == b"d":
-            index += 1
-            d = {}
-            while data[index:index + 1] != b"e":
-                key, index = decode_bytes(index)
-                val, index = decode(index)
-                d[key] = val
-            return d, index + 1
-        if marker == b"l":
-            index += 1
-            items = []
-            while data[index:index + 1] != b"e":
-                val, index = decode(index)
-                items.append(val)
-            return items, index + 1
-        if marker == b"i":
-            end = data.index(b"e", index)
-            return int(data[index + 1:end]), end + 1
-        return decode_bytes(index)
-
-    result, index = decode(0)
-    if index != len(data):
-        raise ValueError("Données superflues après la structure bencode racine")
-    return result
-
-
-# --- bencode : encodage ----------------------------------------------------
-
-def bencode(obj) -> bytes:
-    if isinstance(obj, bool):
-        raise TypeError("bencode ne supporte pas bool (utiliser int)")
-    if isinstance(obj, int):
-        return b"i" + str(obj).encode("ascii") + b"e"
-    if isinstance(obj, bytes):
-        return str(len(obj)).encode("ascii") + b":" + obj
-    if isinstance(obj, str):
-        return bencode(obj.encode("utf-8"))
-    if isinstance(obj, list):
-        return b"l" + b"".join(bencode(item) for item in obj) + b"e"
-    if isinstance(obj, dict):
-        normalized = {(k.encode("utf-8") if isinstance(k, str) else k): v for k, v in obj.items()}
-        return b"d" + b"".join(
-            bencode(key) + bencode(normalized[key]) for key in sorted(normalized)
-        ) + b"e"
-    raise TypeError(f"Type non supporté pour bencode : {type(obj)}")
-
-
-def infohash(info: dict) -> str:
-    return hashlib.sha1(bencode(info)).hexdigest()
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from torrent_lib import (  # noqa: E402
+    bdecode, bencode, infohash, load_dotenv, tracker_urls, webseed_url,
+)
 
 
 # --- manipulation des trackers / webseeds ----------------------------------
@@ -117,7 +64,15 @@ def add_webseeds(torrent: dict, urls: list[str]) -> None:
 # --- affichage ---------------------------------------------------------
 
 def show(torrent: dict) -> None:
-    print(f"Info-hash : {infohash(torrent[b'info'])}")
+    info = torrent[b"info"]
+    print(f"Nom       : {info[b'name'].decode()}")
+    print(f"Info-hash : {infohash(info)}")
+
+    if b"files" in info:
+        total = sum(f[b"length"] for f in info[b"files"])
+        print(f"Contenu   : {len(info[b'files'])} fichier(s), {total / 1024**3:.2f} Gio")
+    elif b"length" in info:
+        print(f"Contenu   : 1 fichier, {info[b'length'] / 1024**3:.2f} Gio")
 
     tiers = torrent.get(b"announce-list")
     if tiers:
@@ -152,17 +107,20 @@ def main() -> None:
     parser.add_argument("-o", "--output", help="Fichier de sortie (défaut : <nom>.edited.torrent)")
     parser.add_argument("--in-place", action="store_true", help="Écrase directement le fichier d'entrée")
     parser.add_argument("--show", action="store_true", help="Affiche l'état actuel (trackers/webseeds)")
+    parser.add_argument("--lab", action="store_true",
+                        help="Remplace trackers et webseed par ceux du labo (LAB_HOST_IP dans .env)")
     parser.add_argument("--add-tracker", action="append", default=[], metavar="URL",
-                         help="Ajoute un tracker dans un nouveau tier (répétable)")
+                        help="Ajoute un tracker dans un nouveau tier (répétable)")
     parser.add_argument("--set-trackers", metavar="URL[,URL...]",
-                         help="Remplace tous les trackers (un tier par URL, la première devient announce)")
+                        help="Remplace tous les trackers (un tier par URL, la première devient announce)")
     parser.add_argument("--add-webseed", action="append", default=[], metavar="URL",
-                         help="Ajoute une URL webseed (BEP 19, répétable)")
+                        help="Ajoute une URL webseed (BEP 19, répétable)")
     parser.add_argument("--set-webseeds", metavar="URL[,URL...]",
-                         help="Remplace toutes les webseeds")
+                        help="Remplace toutes les webseeds")
     args = parser.parse_args()
 
-    modifying = bool(args.set_trackers or args.add_tracker or args.set_webseeds or args.add_webseed)
+    modifying = bool(args.lab or args.set_trackers or args.add_tracker
+                     or args.set_webseeds or args.add_webseed)
     if not modifying and not args.show:
         parser.error("Rien à faire : utilisez --show et/ou une option de modification.")
 
@@ -170,6 +128,10 @@ def main() -> None:
     torrent = bdecode(in_path.read_bytes())
     original_infohash = infohash(torrent[b"info"])
 
+    if args.lab:
+        load_dotenv()
+        set_trackers(torrent, tracker_urls())
+        set_webseeds(torrent, [webseed_url()])
     if args.set_trackers:
         set_trackers(torrent, parse_csv(args.set_trackers))
     if args.add_tracker:
@@ -179,9 +141,8 @@ def main() -> None:
     if args.add_webseed:
         add_webseeds(torrent, args.add_webseed)
 
-    if modifying:
-        assert infohash(torrent[b"info"]) == original_infohash, \
-            "L'info-hash a changé : le dictionnaire info a été modifié par erreur."
+    if modifying and infohash(torrent[b"info"]) != original_infohash:
+        sys.exit("L'info-hash a changé : le dictionnaire info a été modifié par erreur.")
 
     show(torrent)
 

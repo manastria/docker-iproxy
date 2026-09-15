@@ -14,3 +14,7 @@ qbittorrent/*
 !qbittorrent/.gitkeep
 torrents/*
 !torrents/.gitkeep
+
+# Caches Python : le dépôt contient désormais un module importable (torrent_lib.py)
+__pycache__/
+*.pyc
