@@ -90,7 +90,7 @@ clé branchée après le démarrage de WSL :
 
 ```bash
 sudo mkdir -p /mnt/h
-sudo mount -t drvfs H: /mnt/h
+sudo mount -t drvfs H: /mnt/h -o uid=1000,gid=1000,noatime
 python3 provision_usb.py /mnt/h
 sudo umount /mnt/h               # avant de retirer la clé
 ```
