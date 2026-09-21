@@ -71,6 +71,30 @@ Déployer l'outillage sur la clé, depuis ce dépôt :
 python3 provision_usb.py /run/media/<user>/<CLE>
 ```
 
+Sous Windows ou WSL, seul le chemin de la clé change. Les exemples
+ci-dessous supposent qu'elle est le lecteur `H:` — à remplacer par la lettre
+affichée dans l'Explorateur Windows.
+
+**Windows** — depuis PowerShell, dans le dépôt (cloné sous Windows, ou ouvert
+via `\\wsl.localhost\<distribution>\…` ; pas depuis `cmd.exe`, qui n'accepte
+pas un chemin UNC comme répertoire courant). Python 3.7+ est requis
+(`py --version` pour le vérifier) :
+
+```powershell
+py provision_usb.py H:\
+```
+
+**WSL** — la clé doit être montée dans WSL avant le déploiement. Un
+`ls /mnt/h` vide signifie qu'elle ne l'est pas, ce qui est fréquent pour une
+clé branchée après le démarrage de WSL :
+
+```bash
+sudo mkdir -p /mnt/h
+sudo mount -t drvfs H: /mnt/h
+python3 provision_usb.py /mnt/h
+sudo umount /mnt/h               # avant de retirer la clé
+```
+
 Cela y installe `make_torrent.py`, `torrent_lib.py`, un lanceur `build.bat`
 pour Windows et un `LISEZMOI.txt`, puis crée `seed/` et `torrents/`. Aucune
 dépendance à installer sur la clé : Python 3.7+ suffit, ni `pip`, ni `rhash`.
