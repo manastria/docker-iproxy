@@ -152,13 +152,20 @@ def main() -> int:
     qbit_delete(session, args.qbit_url, ih)
 
     # 2. Reliquat éventuel des données.
-    if data.exists():
+    # qBittorrent efface les fichiers de façon asynchrone : le dossier peut
+    # encore exister quand on le teste, puis disparaître en cours de route.
+    # Un fichier déjà absent n'est donc pas une erreur ici.
+    def ignore_missing(func, path, exc):
+        if not isinstance(exc, FileNotFoundError):
+            raise exc
+
+    if data.exists() or data.is_symlink():
         STEP("Suppression des données restantes")
         if data.is_dir() and not data.is_symlink():
-            shutil.rmtree(data)
+            shutil.rmtree(data, onexc=ignore_missing)
         else:
-            data.unlink()
-        OK(f"{data} supprimé.")
+            data.unlink(missing_ok=True)
+        OK(f"{data} supprimé (ou déjà effacé par qBittorrent).")
 
     # 3. Le .torrent publié.
     STEP("Retrait du .torrent publié")
