@@ -194,6 +194,7 @@ diffusée, créer un nouveau dossier daté plutôt que de modifier l'ancien.
 | `import_seed.py` | dépôt | Copie, vérifie, tamponne, publie et met en seed |
 | `edit_torrent.py` | dépôt | Corrige trackers/webseeds d'un `.torrent`, inspecte |
 | `add_torrent.py` | dépôt | Met en seed un `.torrent` seul (appoint) |
+| `remove_torrent.py` | dépôt | Supprime un torrent obsolète (seed, données, `.torrent`) |
 | `torrent_lib.py` | — | Briques communes (bencode, manifeste, création, API) |
 
 Tous sont sans dépendance externe, à une exception près : les fonctions qui
@@ -258,6 +259,20 @@ Ajoute un `.torrent` à qBittorrent et le met en seed sur le contenu déjà
 présent sous `IMAGES_VM_PATH`. `import_seed.py` fait cela et le reste ; ce
 script sert quand les données sont déjà en place et qu'il n'y a que l'ajout à
 refaire. Nécessite un mot de passe WebUI fixe — voir `docs/qbittorrent.md`.
+
+### `remove_torrent.py` — retrait d'un torrent obsolète
+
+```
+python3 remove_torrent.py "<nom-du-torrent>" [--dry-run] [--yes]
+```
+
+`<nom-du-torrent>` est le nom de `torrents/<nom>.torrent` sans l'extension.
+Le script retire le torrent de qBittorrent **avec ses données**, supprime ce
+qui resterait sous `IMAGES_VM_PATH/<nom>`, puis le `.torrent` publié (qui
+disparaît de torrents-http). `--dry-run` montre la cible sans rien toucher ;
+sans `--yes`, une confirmation est demandée. Irréversible. Nécessite le mot
+de passe WebUI fixe, comme `add_torrent.py` : en cas d'échec
+d'authentification, rien n'est supprimé.
 
 ## Dépannage
 
