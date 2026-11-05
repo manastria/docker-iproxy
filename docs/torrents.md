@@ -195,6 +195,7 @@ diffusée, créer un nouveau dossier daté plutôt que de modifier l'ancien.
 | `edit_torrent.py` | dépôt | Corrige trackers/webseeds d'un `.torrent`, inspecte |
 | `add_torrent.py` | dépôt | Met en seed un `.torrent` seul (appoint) |
 | `remove_torrent.py` | dépôt | Supprime un torrent obsolète (seed, données, `.torrent`) |
+| `check_torrents.py` | dépôt | Vérifie la cohérence `.torrent` / données / qBittorrent |
 | `torrent_lib.py` | — | Briques communes (bencode, manifeste, création, API) |
 
 Tous sont sans dépendance externe, à une exception près : les fonctions qui
@@ -273,6 +274,20 @@ disparaît de torrents-http). `--dry-run` montre la cible sans rien toucher ;
 sans `--yes`, une confirmation est demandée. Irréversible. Nécessite le mot
 de passe WebUI fixe, comme `add_torrent.py` : en cas d'échec
 d'authentification, rien n'est supprimé.
+
+### `check_torrents.py` — contrôle de cohérence
+
+```
+python3 check_torrents.py [--no-qbit]
+```
+
+Croise les `.torrent` de `./torrents`, les données sous `IMAGES_VM_PATH` et
+les torrents de qBittorrent (par info-hash). Signale : un `.torrent` sans
+données (ou aux fichiers manquants / de taille différente), inconnu de
+qBittorrent ou pas en seed ; des données sans `.torrent` ; un torrent
+qBittorrent sans `.torrent` publié. Lecture seule ; code de sortie 1 s'il y a
+une anomalie. `--no-qbit` limite le contrôle aux fichiers. Les données
+orphelines s'éliminent avec `remove_torrent.py`.
 
 ## Dépannage
 
